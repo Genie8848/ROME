@@ -31,7 +31,6 @@
 
 #[ink::contract]
 mod doublesig {
-    use ink::codegen::Env;
 
     #[ink(storage)]
     pub struct DoubleSig {
@@ -86,18 +85,11 @@ mod doublesig {
                 };
                 amount as f64 * 0.03 // 3%
             };
-            println!("deduct {}", amount_to_deduct);
-            println!(
-                "testion {:?}",
-                balance.checked_sub(self.env().minimum_balance())
-            );
             let current_balance = balance
                 .checked_sub(self.env().minimum_balance())
                 .and_then(|res| res.checked_sub(amount_to_deduct.ceil() as Balance))
                 .unwrap_or_default();
-            println!("current {}", current_balance);
             if current_balance <= amount {
-                println!("inner {} cuu {}", self.amount_held, current_balance);
                 return Err(Error::InsufficientFunds {
                     total_balance: self.get_balance(),
                     funds_to_transfer: amount,
@@ -193,18 +185,6 @@ mod doublesig {
             ink::env::test::default_accounts::<ink::env::DefaultEnvironment>()
         }
 
-        fn get_account_balance(account: AccountId) -> Balance {
-            ink::env::test::get_account_balance::<ink::env::DefaultEnvironment>(account)
-                .expect("Cannot get account balance")
-        }
-
-        fn get_current_time() -> Timestamp {
-            let since_the_epoch = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("Time went backwards");
-            since_the_epoch.as_secs() + since_the_epoch.subsec_nanos() as u64 / 1_000_000_000
-        }
-
         fn set_balance(account_id: AccountId, balance: Balance) {
             ink::env::test::set_account_balance::<ink::env::DefaultEnvironment>(account_id, balance)
         }
@@ -243,9 +223,6 @@ mod doublesig {
             smart_contract
                 .transfer_funds(accounts.eve, 2_000_000)
                 .unwrap();
-            println!("hi tejre {}", smart_contract.free());
-            println!("hi tejre {}", smart_contract.amount_stored());
-            println!("hi tejre {}", smart_contract.get_balance());
             assert_eq!(get_balance(accounts.eve), 2_000_000);
         }
 
