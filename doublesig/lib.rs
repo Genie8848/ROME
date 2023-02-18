@@ -29,6 +29,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use ink::codegen::Env;
+
 #[ink::contract]
 mod doublesig {
 
@@ -36,7 +38,6 @@ mod doublesig {
     pub struct DoubleSig {
         user: AccountId,
         expiration: Timestamp,
-        // store amount held as a decimal
         amount_held: Balance,
     }
 
@@ -55,6 +56,7 @@ mod doublesig {
             existential_deposit: Balance,
         },
         TransferAmountTooLarge,
+        WithdrawalFailed,
     }
 
     /// Type alias for the contract's `Result` type.
@@ -74,7 +76,15 @@ mod doublesig {
         }
 
         /// Transfer `amount` to specified destination. An addition 3% of the transaction
-        /// would be deduced and stored
+        /// would be deduced and stored.
+        ///
+        /// # Errors
+        ///
+        /// - Panics in case the requested transfer exceeds the contract balance.
+        /// - Panics in case the requested transfer would have brought this
+        ///   contract's balance below the minimum balance (i.e. the chain's
+        ///   existential deposit).
+        /// - Panics in case the transfer failed for another reason.
         #[ink(message)]
         pub fn transfer_funds(&mut self, destination: AccountId, amount: Balance) -> Result<()> {
             // ensure the amount held is greater than the contract's balance
@@ -123,6 +133,9 @@ mod doublesig {
         }
 
         /// Transfer savings to `senders` account
+        ///
+        /// # Errors
+        /// Ideally this method doesn't panic. Please report any panics
         pub fn withdraw_savings(&mut self) -> Result<()> {
             if self.env().caller() != self.user {
                 return Err(Error::CallerIsNotOwner);
@@ -130,6 +143,17 @@ mod doublesig {
             let now = self.env().block_timestamp();
             if now < self.expiration {
                 return Err(Error::NotYetExpired);
+            }
+            let remainder = self
+                .get_balance()
+                .checked_sub(self.amount_held)
+                .unwrap_or_default();
+            if remainder < self.env().minimum_balance() {
+                ink::env::debug_println!(
+                    "Balance would fall below existential deposit. \
+                    Terminate contract to withdraw all funds"
+                );
+                return Err(Error::WithdrawalFailed);
             }
             if self
                 .env()
@@ -157,7 +181,6 @@ mod doublesig {
         }
 
         /// Get the total value of the funds which has been saved
-        // This amount should never decrease
         #[ink(message)]
         pub fn amount_stored(&self) -> Balance {
             self.amount_held
