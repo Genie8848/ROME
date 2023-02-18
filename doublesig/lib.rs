@@ -171,7 +171,6 @@ mod doublesig {
         /// Get the current spendable amount (`free balance`)
         #[ink(message)]
         pub fn free(&self) -> Balance {
-            println!("min {}", self.env().minimum_balance());
             self.get_balance()
                 .checked_sub(self.env().minimum_balance())
                 .and_then(|res| res.checked_sub(self.amount_held))
