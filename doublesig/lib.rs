@@ -1,5 +1,6 @@
 //! A smart contract that allows users to generate a double signature for the
 //! distribution of funds every time they sign a transaction.
+//!
 //! ## Overview
 //!
 //! This contract enables the user to save an amount of funds each time he makes
@@ -26,6 +27,7 @@
 //! Ideally, a major part of the sender's funds should be transferred to this
 //! contract and the user should then perform subsequent transactions through the
 //! contract's interface.
+//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -75,8 +77,8 @@ mod doublesig {
             }
         }
 
-        /// Transfer `amount` to specified destination. An addition 3% of the transaction
-        /// would be deduced and stored.
+        /// Transfer `amount` to specified `destination`. An addition 3% of the transaction
+        /// would be deducted and stored.
         ///
         /// # Errors
         ///
@@ -90,7 +92,7 @@ mod doublesig {
             // ensure the amount held is greater than the contract's balance
             let balance = self.get_balance();
             // since fractions aren't supported, use the `ceil` value
-            // Therefore the minimum fee is 1
+            // Therefore the minimum fee is 1 unit
             let amount_to_deduct = {
                 if amount > f64::MAX as Balance {
                     return Err(Error::TransferAmountTooLarge);
@@ -134,7 +136,7 @@ mod doublesig {
             self.env().terminate_contract(self.user);
         }
 
-        /// Transfer savings to `senders` account
+        /// Transfer all savings to `senders` account
         ///
         /// # Errors
         /// Ideally this method doesn't panic. Please report any panics
