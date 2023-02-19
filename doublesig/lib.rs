@@ -77,7 +77,7 @@ mod doublesig {
             }
         }
 
-        /// Transfer `amount` to specified `destination`. An addition 3% of the transaction
+        /// Transfer `amount` to specified `destination`. An additional 3% of the transaction
         /// would be deducted and stored.
         ///
         /// # Errors
