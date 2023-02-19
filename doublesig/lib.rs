@@ -43,8 +43,8 @@ mod doublesig {
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub enum Error {
-        /// Returned if caller is not the `sender` while required to.
         NotYetExpired,
+        /// Returned if caller is not the `sender` while required to.
         CallerIsNotOwner,
         InsufficientFunds {
             total_balance: Balance,
@@ -59,6 +59,8 @@ mod doublesig {
 
     /// Type alias for the contract's `Result` type.
     pub type Result<T> = core::result::Result<T, Error>;
+
+    const FEE: f64 = 0.03; // 3%
 
     impl DoubleSig {
         /// Creates a new instance of this contract.
@@ -87,15 +89,17 @@ mod doublesig {
         pub fn transfer_funds(&mut self, destination: AccountId, amount: Balance) -> Result<()> {
             // ensure the amount held is greater than the contract's balance
             let balance = self.get_balance();
+            // since fractions aren't supported, use the `ceil` value
+            // Therefore the minimum fee is 1
             let amount_to_deduct = {
                 if amount > f64::MAX as Balance {
                     return Err(Error::TransferAmountTooLarge);
                 };
-                amount as f64 * 0.03 // 3%
+                (amount as f64 * FEE).ceil() as Balance
             };
             let current_balance = balance
                 .checked_sub(self.env().minimum_balance())
-                .and_then(|res| res.checked_sub(amount_to_deduct.ceil() as Balance))
+                .and_then(|res| res.checked_sub(amount_to_deduct))
                 .unwrap_or_default();
             if current_balance <= amount {
                 return Err(Error::InsufficientFunds {
@@ -112,7 +116,7 @@ mod doublesig {
                      contract's balance below minimum balance."
                 )
             }
-            self.amount_held += amount_to_deduct.ceil() as Balance;
+            self.amount_held += amount_to_deduct;
             Ok(())
         }
 
